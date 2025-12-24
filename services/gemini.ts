@@ -5,9 +5,13 @@ const TEXT_MODEL = "gemini-3-flash-preview";
 const IMAGE_MODEL = "gemini-2.5-flash-image";
 
 export const generateDogPersona = async (name: string, answers: QuizAnswer[]): Promise<DogPersona> => {
-  // Initialize AI client inside the function to ensure process.env is accessed at runtime
-  // and to prevent app crash if process is undefined during initial load.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("Không tìm thấy API Key. Vui lòng kiểm tra biến môi trường API_KEY trong Vercel. (Missing API_KEY)");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: apiKey });
   
   // Format answers for the prompt
   const answersText = answers.map(a => `- Question: "${a.questionText}" | User Answer: "${a.answerText}"`).join("\n");
@@ -28,39 +32,50 @@ export const generateDogPersona = async (name: string, answers: QuizAnswer[]): P
     - Best and Worst matches (can be other dog types or personality types).
   `;
 
-  const response = await ai.models.generateContent({
-    model: TEXT_MODEL,
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          breed: { type: Type.STRING },
-          colorName: { type: Type.STRING },
-          hexCode: { type: Type.STRING },
-          personality: { type: Type.STRING },
-          traits: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
+  try {
+    const response = await ai.models.generateContent({
+      model: TEXT_MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            breed: { type: Type.STRING },
+            colorName: { type: Type.STRING },
+            hexCode: { type: Type.STRING },
+            personality: { type: Type.STRING },
+            traits: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            },
+            quote: { type: Type.STRING },
+            bestMatch: { type: Type.STRING },
+            worstMatch: { type: Type.STRING },
           },
-          quote: { type: Type.STRING },
-          bestMatch: { type: Type.STRING },
-          worstMatch: { type: Type.STRING },
+          required: ["breed", "colorName", "hexCode", "personality", "traits", "quote", "bestMatch", "worstMatch"],
         },
-        required: ["breed", "colorName", "hexCode", "personality", "traits", "quote", "bestMatch", "worstMatch"],
       },
-    },
-  });
+    });
 
-  const text = response.text;
-  if (!text) throw new Error("No text response from Gemini");
-  
-  return JSON.parse(text) as DogPersona;
+    let text = response.text;
+    if (!text) throw new Error("AI không trả về kết quả (Empty response).");
+    
+    // Clean JSON if it comes wrapped in markdown
+    text = text.replace(/```json|```/g, '').trim();
+    
+    return JSON.parse(text) as DogPersona;
+  } catch (error: any) {
+    console.error("Gemini Text Gen Error:", error);
+    throw new Error(`Lỗi tạo nội dung: ${error.message || error}`);
+  }
 };
 
 export const generateDogImage = async (persona: DogPersona): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("Missing API_KEY");
+  
+  const ai = new GoogleGenAI({ apiKey: apiKey });
 
   const prompt = `
     A cute, high-quality, flat vector art sticker illustration of a dog that represents: ${persona.breed}.
@@ -71,21 +86,26 @@ export const generateDogImage = async (persona: DogPersona): Promise<string> => 
     No text in the image.
   `;
 
-  const response = await ai.models.generateContent({
-    model: IMAGE_MODEL,
-    contents: {
-      parts: [{ text: prompt }]
-    }
-  });
+  try {
+    const response = await ai.models.generateContent({
+      model: IMAGE_MODEL,
+      contents: {
+        parts: [{ text: prompt }]
+      }
+    });
 
-  const parts = response.candidates?.[0]?.content?.parts;
-  if (!parts) throw new Error("No image generated");
+    const parts = response.candidates?.[0]?.content?.parts;
+    if (!parts) throw new Error("Không tạo được ảnh (No image generated).");
 
-  for (const part of parts) {
-    if (part.inlineData && part.inlineData.data) {
-      return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+    for (const part of parts) {
+      if (part.inlineData && part.inlineData.data) {
+        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+      }
     }
+
+    throw new Error("Không tìm thấy dữ liệu ảnh trong phản hồi.");
+  } catch (error: any) {
+    console.error("Gemini Image Gen Error:", error);
+    throw new Error(`Lỗi tạo ảnh: ${error.message || error}`);
   }
-
-  throw new Error("Could not find image data in response");
 };

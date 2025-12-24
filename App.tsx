@@ -25,9 +25,10 @@ function App() {
       setImageUrl(img);
 
       setStep(AppStep.RESULT);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Có lỗi xảy ra khi kết nối với AI. Vui lòng thử lại! (Error connecting to AI)');
+      // Display the actual error message for better debugging
+      setError(err.message || 'Có lỗi xảy ra khi kết nối với AI.');
       setStep(AppStep.ERROR);
     }
   };
@@ -62,8 +63,8 @@ function App() {
         {step === AppStep.ERROR && (
           <div className="text-center p-8 bg-white rounded-3xl shadow-xl max-w-sm mx-4">
             <div className="text-4xl mb-4">🐕‍🦺</div>
-            <h3 className="text-xl font-bold text-stone-800 mb-2">Úi chà!</h3>
-            <p className="text-stone-600 mb-6">{error}</p>
+            <h3 className="text-xl font-bold text-stone-800 mb-2">Úi chà! Có lỗi rồi</h3>
+            <p className="text-stone-600 mb-6 text-sm break-words">{error}</p>
             <button 
               onClick={handleReset}
               className="px-6 py-2 bg-stone-800 text-white rounded-xl font-bold hover:bg-stone-900"
