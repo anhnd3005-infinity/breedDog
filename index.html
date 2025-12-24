@@ -6,6 +6,10 @@
     <title>ColorWoof AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // Polyfill for process.env to prevent ReferenceError in browser environments (Vercel)
+      window.process = window.process || { env: {} };
+    </script>
     <style>
       body {
         font-family: 'Quicksand', sans-serif;

@@ -1,12 +1,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { DogPersona, QuizAnswer } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 const TEXT_MODEL = "gemini-3-flash-preview";
 const IMAGE_MODEL = "gemini-2.5-flash-image";
 
 export const generateDogPersona = async (name: string, answers: QuizAnswer[]): Promise<DogPersona> => {
+  // Initialize AI client inside the function to ensure process.env is accessed at runtime
+  // and to prevent app crash if process is undefined during initial load.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
   // Format answers for the prompt
   const answersText = answers.map(a => `- Question: "${a.questionText}" | User Answer: "${a.answerText}"`).join("\n");
 
@@ -58,6 +60,8 @@ export const generateDogPersona = async (name: string, answers: QuizAnswer[]): P
 };
 
 export const generateDogImage = async (persona: DogPersona): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   const prompt = `
     A cute, high-quality, flat vector art sticker illustration of a dog that represents: ${persona.breed}.
     Main color theme: ${persona.colorName} (Hex: ${persona.hexCode}).
