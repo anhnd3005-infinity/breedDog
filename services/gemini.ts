@@ -4,11 +4,30 @@ import { DogPersona, QuizAnswer } from "../types";
 const TEXT_MODEL = "gemini-3-flash-preview";
 const IMAGE_MODEL = "gemini-2.5-flash-image";
 
+// Helper to retrieve API Key from various environment configurations
+const getApiKey = (): string | undefined => {
+  // 1. Try Vite standard (common for Vercel + React)
+  // @ts-ignore
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
+    // @ts-ignore
+    return import.meta.env.VITE_API_KEY;
+  }
+  
+  // 2. Try Standard Node/Webpack process.env
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.API_KEY) return process.env.API_KEY;
+    if (process.env.REACT_APP_API_KEY) return process.env.REACT_APP_API_KEY; // CRA support
+    if (process.env.VITE_API_KEY) return process.env.VITE_API_KEY; // Fallback
+  }
+
+  return undefined;
+};
+
 export const generateDogPersona = async (name: string, answers: QuizAnswer[]): Promise<DogPersona> => {
-  const apiKey = process.env.API_KEY;
+  const apiKey = getApiKey();
   
   if (!apiKey) {
-    throw new Error("Không tìm thấy API Key. Vui lòng kiểm tra biến môi trường API_KEY trong Vercel. (Missing API_KEY)");
+    throw new Error("Không tìm thấy API Key. Hãy đảm bảo bạn đã đặt tên biến môi trường là 'VITE_API_KEY' trong Vercel Settings.");
   }
 
   const ai = new GoogleGenAI({ apiKey: apiKey });
@@ -72,7 +91,7 @@ export const generateDogPersona = async (name: string, answers: QuizAnswer[]): P
 };
 
 export const generateDogImage = async (persona: DogPersona): Promise<string> => {
-  const apiKey = process.env.API_KEY;
+  const apiKey = getApiKey();
   if (!apiKey) throw new Error("Missing API_KEY");
   
   const ai = new GoogleGenAI({ apiKey: apiKey });
